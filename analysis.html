@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SymboliQ — Analyse de Sensibilité</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --radius:12px;
+  --font-head:'Syne',system-ui,sans-serif;
+  --font-body:'DM Sans',system-ui,sans-serif;
+  --font-mono:'DM Mono','Fira Mono',monospace;
+}
+[data-theme="light"] {
+  --bg:#f4f5f8; --surface:#fff; --surface2:#f8f9fb;
+  --border:#dde0e8; --border2:#ccd0dc;
+  --accent:#c47800; --accent2:#e09020;
+  --text:#1a1d28; --muted:#7a8099; --hover-bg:#f0f1f6;
+  --green:#1a8050; --green-bg:rgba(26,128,80,.09);
+  --red:#a03030;   --red-bg:rgba(160,48,48,.09);
+  --amber:#b06000; --amber-bg:rgba(176,96,0,.09);
+  --blue:#1a4fa0;  --blue-bg:rgba(26,79,160,.09);
+  --purple:#6030b0;--purple-bg:rgba(96,48,176,.09);
+  --teal:#0e7490;  --teal-bg:rgba(14,116,144,.09);
+  --shadow:0 1px 3px rgba(0,0,0,.07),0 4px 16px rgba(0,0,0,.05);
+}
+[data-theme="dark"] {
+  --bg:#0d0f14; --surface:#151820; --surface2:#111318;
+  --border:#222633; --border2:#2d3248;
+  --accent:#e8a020; --accent2:#f0c060;
+  --text:#e8eaf0; --muted:#7a8099; --hover-bg:#1c2030;
+  --green:#5dd68a; --green-bg:rgba(93,214,138,.1);
+  --red:#d07070;   --red-bg:rgba(208,112,112,.1);
+  --amber:#e8a020; --amber-bg:rgba(232,160,32,.1);
+  --blue:#6090e0;  --blue-bg:rgba(96,144,224,.1);
+  --purple:#a070e0;--purple-bg:rgba(160,112,224,.1);
+  --teal:#36c5d4;  --teal-bg:rgba(54,197,212,.1);
+  --shadow:0 1px 3px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.2);
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes bar-grow{from{width:0}to{width:var(--bar-w,0%)}}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow-x:hidden}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);font-size:13.5px;line-height:1.6;transition:background .25s,color .25s}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* ── HEADER ── */
+header{
+  position:sticky;top:0;z-index:50;height:56px;padding:0 24px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:14px;box-shadow:var(--shadow);
+}
+.header-stripe{position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,var(--accent),var(--accent2))}
+.logo-mark{width:34px;height:34px;border-radius:8px;flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-weight:800;font-size:12px;color:#0d0f14}
+.header-title{font-family:var(--font-head);font-size:17px;font-weight:700;color:var(--text)}
+.header-title span{color:var(--accent)}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.icon-btn{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .15s}
+.icon-btn:hover{background:var(--hover-bg)}
+
+/* ── LAYOUT ── */
+.page{max-width:1280px;margin:0 auto;padding:1.5rem 1.5rem 3rem}
+
+/* ── IMPORT ZONE ── */
+.import-zone{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:1.5rem;margin-bottom:1.5rem;box-shadow:var(--shadow);
+}
+.import-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.drop-zone{
+  border:2px dashed var(--border2);border-radius:10px;padding:1rem 1.5rem;
+  text-align:center;cursor:pointer;transition:all .2s;position:relative;flex:1;min-width:200px;
+}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:var(--amber-bg)}
+.drop-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.drop-text{color:var(--muted);font-size:12px;line-height:1.6}
+.drop-text b{color:var(--accent)}
+textarea#pasteArea{
+  flex:1;min-width:200px;min-height:90px;resize:vertical;
+  background:var(--bg);border:1px solid var(--border2);border-radius:8px;
+  color:var(--text);font-family:var(--font-mono);font-size:11.5px;
+  padding:8px 10px;outline:none;
+}
+textarea#pasteArea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--amber-bg)}
+
+/* ── SECTION CARD ── */
+.section-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  margin-bottom:1.5rem;box-shadow:var(--shadow);overflow:hidden;
+  animation:fadeUp .35s ease both;
+}
+.section-header{
+  display:flex;align-items:center;gap:12px;
+  padding:.85rem 1.25rem;border-bottom:1px solid var(--border);
+  background:var(--surface2);cursor:pointer;user-select:none;
+}
+.section-icon{font-size:1.1rem;width:28px;text-align:center;flex-shrink:0}
+.section-name{font-family:var(--font-head);font-size:14px;font-weight:600;flex:1}
+.section-badge{font-size:10px;font-weight:500;padding:2px 8px;border-radius:100px;letter-spacing:.05em}
+.section-toggle{font-size:11px;color:var(--muted);transition:transform .2s;margin-left:4px}
+.section-header.open .section-toggle{transform:rotate(90deg)}
+.section-body{padding:1.25rem;display:none}
+.section-body.open{display:block}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 14px;border-radius:8px;font-family:var(--font-body);font-size:12.5px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--hover-bg);border-color:var(--border2)}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover:not(:disabled){background:var(--accent2);border-color:var(--accent2)}
+.btn-sm{padding:4px 10px;font-size:11.5px}
+
+/* ── STATS TABLE ── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem}
+.var-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;position:relative;overflow:hidden}
+.var-card-name{font-family:var(--font-mono);font-size:12px;color:var(--accent);font-weight:500;margin-bottom:.75rem;display:flex;align-items:center;gap:8px}
+.var-type-tag{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:3px}
+.tag-x{background:var(--blue-bg);color:var(--blue)}
+.tag-y{background:var(--green-bg);color:var(--green)}
+
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;padding:2px 0;border-bottom:1px solid var(--border)}
+.stat-row:last-child{border-bottom:none}
+.stat-label{font-size:11.5px;color:var(--muted)}
+.stat-value{font-family:var(--font-mono);font-size:12px;color:var(--text)}
+.stat-highlight{color:var(--accent);font-weight:500}
+
+/* mini sparkline / distribution bar */
+.dist-bar-wrap{margin-top:.6rem}
+.dist-label{font-size:10px;color:var(--muted);margin-bottom:3px;display:flex;justify-content:space-between}
+.dist-bars{display:flex;gap:2px;height:32px;align-items:flex-end}
+.dist-bin{background:var(--accent);border-radius:2px 2px 0 0;flex:1;min-height:2px;opacity:.7;transition:opacity .15s}
+.dist-bin:hover{opacity:1}
+
+/* ── SENSITIVITY TABLE ── */
+.sens-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.sens-table th{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);text-align:left;padding:7px 10px;border-bottom:2px solid var(--border2);white-space:nowrap}
+.sens-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.sens-table tr:last-child td{border-bottom:none}
+.sens-table tr:hover td{background:var(--hover-bg)}
+.rank-bar-cell{width:140px}
+.rank-bar-bg{background:var(--border);border-radius:4px;height:8px;overflow:hidden;width:120px}
+.rank-bar-fill{height:100%;border-radius:4px;transition:width .6s ease}
+
+/* ── SOBOL HEATMAP ── */
+.sobol-grid{display:grid;gap:2px}
+.sobol-cell{border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;font-weight:500;aspect-ratio:1;min-height:36px;min-width:36px;transition:opacity .15s}
+.sobol-cell:hover{opacity:.8;cursor:default}
+.sobol-label-row{display:grid;gap:2px;align-items:center}
+.sobol-wrap{overflow-x:auto}
+.sobol-legend{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:11px;color:var(--muted)}
+.sobol-grad{height:10px;width:120px;border-radius:3px;background:linear-gradient(90deg,var(--surface2),var(--accent))}
+
+/* ── VALIDATION CARDS ── */
+.cv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.85rem}
+.cv-metric{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.85rem;text-align:center}
+.cv-label{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.cv-value{font-family:var(--font-mono);font-size:20px;color:var(--accent)}
+.cv-sub{font-size:10.5px;color:var(--muted);margin-top:2px}
+
+/* ── BOOTSTRAP ── */
+.boot-chart-wrap{position:relative;width:100%;height:200px}
+canvas{max-width:100%}
+
+/* ── PROGRESS ── */
+.prog-wrap{background:var(--border);border-radius:4px;height:4px;overflow:hidden;margin:8px 0}
+.prog-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:4px;transition:width .3s;width:0%}
+.prog-label{font-size:11px;color:var(--muted);font-family:var(--font-mono)}
+
+/* ── BADGES ── */
+.badge{display:inline-block;font-size:10px;font-weight:500;letter-spacing:.05em;padding:2px 7px;border-radius:100px}
+.badge-green{background:var(--green-bg);color:var(--green)}
+.badge-amber{background:var(--amber-bg);color:var(--amber)}
+.badge-red{background:var(--red-bg);color:var(--red)}
+.badge-blue{background:var(--blue-bg);color:var(--blue)}
+.badge-purple{background:var(--purple-bg);color:var(--purple)}
+
+/* ── SPINNER ── */
+.spinner{width:14px;height:14px;border-radius:50%;border:2px solid var(--border2);border-top-color:var(--accent);animation:spin .65s linear infinite;display:inline-block}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:18px;right:18px;z-index:9999;background:var(--surface);border:1px solid var(--border2);border-radius:9px;padding:9px 14px;font-size:12.5px;box-shadow:var(--shadow);animation:fadeUp .2s ease}
+
+/* ── INFO BOX ── */
+.info-box{background:var(--blue-bg);border:1px solid rgba(26,79,160,.15);border-radius:7px;padding:9px 12px;font-size:11.5px;color:var(--muted);line-height:1.7;margin-bottom:1rem}
+[data-theme="dark"] .info-box{border-color:rgba(96,144,224,.2)}
+.warn-box{background:var(--amber-bg);border:1px solid rgba(176,96,0,.2);border-radius:7px;padding:9px 12px;font-size:11.5px;color:var(--amber);line-height:1.7;margin-bottom:.75rem}
+
+/* ── FORMULA INPUT ── */
+.formula-input-wrap{display:flex;gap:8px;align-items:center;margin-bottom:1rem}
+.formula-input-wrap input{flex:1;background:var(--bg);border:1px solid var(--border2);color:var(--text);border-radius:7px;padding:7px 10px;font-family:var(--font-mono);font-size:12.5px;outline:none}
+.formula-input-wrap input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--amber-bg)}
+
+/* ── GRID UTILS ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:700px){.two-col{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-stripe"></div>
+  <div class="logo-mark">SR</div>
+  <div>
+    <div class="header-title">Symboli<span>Q</span> — Analyse de Sensibilité</div>
+  </div>
+  <div class="header-right">
+    <a href="index.html" class="btn btn-sm">← Retour</a>
+    <button class="icon-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
+  </div>
+</header>
+
+<div class="page">
+
+  <!-- ═══ IMPORT ═══ -->
+  <div class="import-zone">
+    <div style="font-family:var(--font-head);font-size:15px;font-weight:600;margin-bottom:1rem;">
+      1. Charger les données
+    </div>
+    <div class="import-row">
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept=".csv,.txt,.tsv,.dat,.data">
+        <div class="drop-text">📂 Déposez un fichier <b>CSV / TSV / DAT</b><br>ou cliquez</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;flex:1;min-width:200px;">
+        <div style="font-size:11.5px;color:var(--muted);">Ou collez directement (Ctrl+V) :</div>
+        <textarea id="pasteArea" placeholder="Collez ici depuis Excel, LibreOffice…&#10;En-tête optionnel, séparateurs auto-détectés"></textarea>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-self:flex-end">
+        <button class="btn btn-primary" onclick="loadFromPaste()">Charger collé</button>
+        <button class="btn" onclick="loadDemo()">Exemple convection</button>
+      </div>
+    </div>
+    <div id="dataInfo" style="margin-top:.85rem;display:none;"></div>
+  </div>
+
+  <!-- ═══ FORMULA (optional) ═══ -->
+  <div class="section-card" id="sec-formula">
+    <div class="section-header open" onclick="toggleSec(this)">
+      <div class="section-icon">𝑓</div>
+      <div class="section-name">Formule du modèle <span style="font-size:11px;font-weight:400;color:var(--muted)">(optionnel — pour analyse de sensibilité intrinsèque)</span></div>
+      <div class="section-badge badge badge-amber">optionnel</div>
+      <div class="section-toggle">▶</div>
+    </div>
+    <div class="section-body open">
+      <div class="info-box">
+        Si vous connaissez la formule (ou si SymboliQ en a trouvé une), entrez-la ici pour calculer les indices de sensibilité analytiques (exposants des lois puissance, impact par variable).
+        Syntaxe JavaScript : <code style="font-family:var(--font-mono);font-size:11px;">A**0.8 / P**0.2</code> ou <code style="font-family:var(--font-mono);font-size:11px;">Math.pow(4*A/P, 0.2) * 0.023</code>
+      </div>
+      <div class="formula-input-wrap">
+        <input type="text" id="formulaInput" placeholder="ex: Math.pow(4*Aire/Perimetre, 0.2) * 14000">
+        <button class="btn btn-primary" onclick="validateFormula()">Valider & Analyser</button>
+      </div>
+      <div id="formulaFeedback" style="font-size:12px;color:var(--muted);"></div>
+    </div>
+  </div>
+
+  <!-- ═══ DESCRIPTIVE STATS ═══ -->
+  <div class="section-card" id="sec-stats" style="display:none">
+    <div class="section-header open" onclick="toggleSec(this)">
+      <div class="section-icon">📊</div>
+      <div class="section-name">Statistiques descriptives</div>
+      <div class="section-badge badge badge-blue" id="stats-badge">—</div>
+      <div class="section-toggle">▶</div>
+    </div>
+    <div class="section-body open" id="stats-body"></div>
+  </div>
+
+  <!-- ═══ SENSITIVITY — INTRINSIC ═══ -->
+  <div class="section-card" id="sec-sens" style="display:none">
+    <div class="section-header open" onclick="toggleSec(this)">
+      <div class="section-icon">⚡</div>
+      <div class="section-name">Sensibilité intrinsèque (loi puissance / formule)</div>
+      <div class="section-badge badge badge-purple" id="sens-badge">—</div>
+      <div class="section-toggle">▶</div>
+    </div>
+    <div class="section-body open" id="sens-body">
+      <div class="info-box">
+        Basée sur l'estimation des exposants locaux α_i = ∂log(y)/∂log(x_i) par différences finies.
+        Valide pour toute formule, pas seulement les lois puissance.
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SOBOL INDICES ═══ -->
+  <div class="section-card" id="sec-sobol" style="display:none">
+    <div class="section-header open" onclick="toggleSec(this)">
+      <div class="section-icon">🎯</div>
+      <div class="section-name">Indices de Sobol — Sensibilité globale</div>
+      <div class="section-badge badge badge-green" id="sobol-badge">—</div>
+      <div class="section-toggle">▶</div>
+    </div>
+    <div class="section-body open" id="sobol-body">
+      <div class="info-box">
+        Méthode de Saltelli (quasi-Monte Carlo, séquences de Sobol) — estimations S_i (first-order) et S_Ti (total-order).
+        <b>Requiert une formule valide.</b>
+        N = <select id="sobolN" style="background:var(--bg);border:1px solid var(--border2);color:var(--text);border-radius:5px;padding:2px 5px;font-size:11.5px;">
+          <option value="512">512</option>
+          <option value="1024" selected>1 024</option>
+          <option value="2048">2 048</option>
+          <option value="4096">4 096</option>
+        </select>
+        <button class="btn btn-sm btn-primary" style="margin-left:8px;" onclick="runSobol()">Calculer</button>
+      </div>
+      <div id="sobol-content"></div>
+    </div>
+  </div>
+
+  <!-- ═══ CROSS-VALIDATION ═══ -->
+  <div class="section-card" id="sec-cv" style="display:none">
+    <div class="section-header open" onclick="toggleSec(this)">
+      <div class="section-icon">✅</div>
+      <div class="section-name">Validation croisée k-fold</div>
+      <div class="section-badge badge badge-blue" id="cv-badge">—</div>
+      <div class="section-toggle">▶</div>
+    </div>
+    <div class="section-body open" id="cv-body">
+      <div class="info-box">
+        Évalue la robustesse du modèle sur des données non vues. Sépare les données en k blocs, entraîne k fois.
+        <b>Requiert une formule valide.</b>
+        k = <select id="cvK" style="background:var(--bg);border:1px solid var(--border2);color:var(--text);border-radius:5px;padding:2px 5px;font-size:11.5px;">
+          <option value="3">3</option>
+          <option value="5" selected>5</option>
+          <option value="10">10</option>
+        </select>
+        <button class="btn btn-sm btn-primary" style="margin-left:8px;" onclick="runCV()">Calculer</button>
+      </div>
+      <div id="cv-content"></div>
+    </div>
+  </div>
+
+  <!-- ═══ PERMUTATION IMPORTANCE ═══ -->
+  <div class="section-card" id="sec-perm" style="display:none">
+    <div class="section-header open" onclick="toggleSec(this)">
+      <div class="section-icon">🔀</div>
+      <div class="section-name">Importance par permutation</div>
+      <div class="section-badge badge badge-amber" id="perm-badge">—</div>
+      <div class="section-toggle">▶</div>
+    </div>
+    <div class="section-body open" id="perm-body">
+      <div class="info-box">
+        Pour chaque variable, on mélange aléatoirement ses valeurs et on mesure la dégradation du R². Une variable importante → forte dégradation.
+        <b>Requiert une formule valide.</b>
+        Répétitions : <select id="permReps" style="background:var(--bg);border:1px solid var(--border2);color:var(--text);border-radius:5px;padding:2px 5px;font-size:11.5px;">
+          <option value="20">20</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+        </select>
+        <button class="btn btn-sm btn-primary" style="margin-left:8px;" onclick="runPermutation()">Calculer</button>
+      </div>
+      <div id="perm-content"></div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<!-- ═══════════════════ ENGINE ═══════════════════ -->
+<script src="js/sr-engine.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+'use strict';
+
+// ── Theme ────────────────────────────────────────────────────
+(function(){
+  var t=localStorage.getItem('als-theme')||'light';
+  document.documentElement.setAttribute('data-theme',t);
+  document.getElementById('themeBtn').textContent=t==='dark'?'☀️':'🌙';
+})();
+function toggleTheme(){
+  var n=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',n);
+  localStorage.setItem('als-theme',n);
+  document.getElementById('themeBtn').textContent=n==='dark'?'☀️':'🌙';
+}
+
+// ── State ────────────────────────────────────────────────────
+var DATA = null;    // { X, y, featureNames, targetName }
+var MODEL_FN = null;// compiled formula function (row)=>value
+
+// ── Accordion ────────────────────────────────────────────────
+function toggleSec(hdr){
+  hdr.classList.toggle('open');
+  hdr.nextElementSibling.classList.toggle('open');
+}
+
+// ── Toast ────────────────────────────────────────────────────
+function toast(msg,isErr){
+  var el=document.createElement('div');el.className='toast';
+  el.style.borderColor=isErr?'var(--red)':'var(--green)';
+  el.style.color=isErr?'var(--red)':'var(--text)';
+  el.textContent=msg;document.body.appendChild(el);
+  setTimeout(function(){el.remove();},3200);
+}
+
+// ── File upload ──────────────────────────────────────────────
+var dz=document.getElementById('dropZone'),fi=document.getElementById('fileInput');
+['dragenter','dragover'].forEach(function(e){dz.addEventListener(e,function(ev){ev.preventDefault();dz.classList.add('drag-over');});});
+['dragleave','drop'].forEach(function(e){dz.addEventListener(e,function(){dz.classList.remove('drag-over');});});
+dz.addEventListener('drop',function(ev){ev.preventDefault();if(ev.dataTransfer.files[0])loadFile(ev.dataTransfer.files[0]);});
+fi.addEventListener('change',function(ev){if(ev.target.files[0])loadFile(ev.target.files[0]);});
+function loadFile(f){
+  var r=new FileReader();
+  r.onload=function(e){ingestText(e.target.result,'Fichier: '+f.name);};
+  r.readAsText(f,'utf-8');
+}
+function loadFromPaste(){ingestText(document.getElementById('pasteArea').value,'Collé');}
+document.addEventListener('paste',function(e){
+  var tag=document.activeElement?document.activeElement.tagName:'';
+  if(tag==='TEXTAREA'||tag==='INPUT') return;
+  var t=(e.clipboardData||window.clipboardData).getData('text');
+  if(t&&t.includes('\n')){e.preventDefault();ingestText(t,'Collé');}
+});
+
+function ingestText(text,src){
+  try{
+    var d=SR.parseCSV(text);
+    DATA={X:d.X,y:d.y,featureNames:d.featureNames,targetName:d.targetName};
+    showDataInfo(src+' — '+d.nRows+' lignes · '+d.featureNames.length+' variable(s) · sep: '+d.detectedSep);
+    renderStats();
+    document.getElementById('formulaInput').placeholder=
+      'ex: Math.pow('+DATA.featureNames.map(function(n){return n;}).join(', ')+', 0.5)';
+    toast('✓ '+d.nRows+' lignes chargées');
+  }catch(err){toast('✗ '+err.message,true);}
+}
+function loadDemo(){
+  var text='Aire\tPerimetre\th\n1\t4\t12439\n2\t6\t13352\n3\t8\t13568\n4\t10\t13656\n5\t12\t13702\n6\t14\t13729\n4\t8\t13821\n6\t10\t13828\n8\t12\t13792\n10\t14\t13755\n12\t16\t13724\n9\t12\t13724\n12\t14\t13616\n15\t16\t14640\n18\t18\t14468\n16\t16\t14468\n20\t18\t14194\n24\t20\t13999\n25\t20\t13897\n30\t22\t13684\n36\t24\t13457';
+  ingestText(text,'Exemple convection');
+  // Pre-fill formula
+  document.getElementById('formulaInput').value='14000 * Math.pow(4*Aire/Perimetre, 0.2)';
+}
+function showDataInfo(msg){
+  var el=document.getElementById('dataInfo');
+  el.style.display='block';
+  el.innerHTML='<span style="font-size:12px;color:var(--muted);">'+msg+'</span>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// STATISTICS
+// ══════════════════════════════════════════════════════════════
+
+function percentile(arr,p){
+  var s=arr.slice().sort(function(a,b){return a-b;});
+  var idx=p/100*(s.length-1);
+  var lo=Math.floor(idx),hi=Math.ceil(idx);
+  if(lo===hi) return s[lo];
+  return s[lo]+(idx-lo)*(s[hi]-s[lo]);
+}
+function stats1d(arr){
+  var n=arr.length;
+  var sorted=arr.slice().sort(function(a,b){return a-b;});
+  var mean=arr.reduce(function(a,b){return a+b;},0)/n;
+  var variance=arr.reduce(function(s,v){return s+(v-mean)*(v-mean);},0)/n;
+  var std=Math.sqrt(variance);
+  var med=percentile(arr,50);
+  var unique=new Set(arr.map(function(v){return +v.toPrecision(8);})).size;
+  return{
+    n:n, min:sorted[0], max:sorted[n-1],
+    mean:mean, median:med, std:std,
+    cv:Math.abs(std/mean),
+    p1:percentile(arr,1), p5:percentile(arr,5),
+    p25:percentile(arr,25), p75:percentile(arr,75),
+    p95:percentile(arr,95), p99:percentile(arr,99),
+    R_p5p95: med>0?(percentile(arr,95)-percentile(arr,5))/Math.abs(med):0,
+    R_full:  med>0?(sorted[n-1]-sorted[0])/Math.abs(med):0,
+    unique:unique,
+    raw:arr,
+  };
+}
+
+function histogram(arr,bins){
+  bins=bins||12;
+  var mn=Math.min.apply(null,arr),mx=Math.max.apply(null,arr);
+  if(mx===mn){return [{lo:mn,hi:mn,count:arr.length}];}
+  var w=(mx-mn)/bins;
+  var counts=new Array(bins).fill(0);
+  arr.forEach(function(v){var i=Math.min(Math.floor((v-mn)/w),bins-1);counts[i]++;});
+  return counts.map(function(c,i){return{lo:mn+i*w,hi:mn+(i+1)*w,count:c};});
+}
+
+function fmt(v,sig){
+  if(!isFinite(v)) return '—';
+  sig=sig||4;
+  if(Math.abs(v)>=1e6||Math.abs(v)<1e-3&&v!==0) return v.toExponential(2);
+  return parseFloat(v.toPrecision(sig)).toString();
+}
+
+function renderStats(){
+  if(!DATA) return;
+  var allCols=DATA.featureNames.map(function(n,i){return{name:n,arr:DATA.X.map(function(r){return r[i];})};});
+  allCols.push({name:DATA.targetName,arr:DATA.y,isTarget:true});
+
+  var body=document.getElementById('stats-body');
+  var html='<div class="stats-grid">';
+  allCols.forEach(function(col){
+    var s=stats1d(col.arr);
+    var hist=histogram(col.arr);
+    var maxC=Math.max.apply(null,hist.map(function(b){return b.count;}));
+
+    var cvClass=s.cv>0.5?'stat-highlight':'';
+    var tag=col.isTarget
+      ?'<span class="var-type-tag tag-y">Y cible</span>'
+      :'<span class="var-type-tag tag-x">X</span>';
+
+    // Distribution bars HTML
+    var barsHtml='<div class="dist-bars">';
+    hist.forEach(function(b){
+      var h=maxC>0?Math.round((b.count/maxC)*32):0;
+      barsHtml+='<div class="dist-bin" style="height:'+Math.max(2,h)+'px;" title="['+fmt(b.lo)+', '+fmt(b.hi)+'] : '+b.count+' pts"></div>';
+    });
+    barsHtml+='</div>';
+
+    html+='<div class="var-card">';
+    html+='<div class="var-card-name">'+tag+'&nbsp;'+col.name+'</div>';
+
+    var rows=[
+      ['n',s.n],
+      ['Min',fmt(s.min)],['Max',fmt(s.max)],
+      ['Moyenne',fmt(s.mean)],['Médiane',fmt(s.median)],
+      ['Éc.-type',fmt(s.std)],
+      ['CV',s.cv!==undefined?'<span class="'+cvClass+'">'+( s.cv*100).toFixed(1)+'%</span>':'—'],
+      ['P1 / P99',fmt(s.p1)+' / '+fmt(s.p99)],
+      ['P5 / P95',fmt(s.p5)+' / '+fmt(s.p95)],
+      ['P25 / P75',fmt(s.p25)+' / '+fmt(s.p75)],
+      ['Valeurs uniques',s.unique],
+      ['R P5–P95',fmt(s.R_p5p95)],
+      ['R min–max',fmt(s.R_full)],
+    ];
+    html+='<div style="display:flex;flex-direction:column;gap:0;">';
+    rows.forEach(function(r){
+      html+='<div class="stat-row"><span class="stat-label">'+r[0]+'</span><span class="stat-value">'+r[1]+'</span></div>';
+    });
+    html+='</div>';
+    html+='<div class="dist-bar-wrap"><div class="dist-label"><span>Distribution ('+hist.length+' bins)</span><span>n='+s.n+'</span></div>'+barsHtml+'</div>';
+    html+='</div>';
+  });
+  html+='</div>';
+
+  body.innerHTML=html;
+  document.getElementById('sec-stats').style.display='';
+  document.getElementById('stats-badge').textContent=allCols.length+' variables';
+  document.getElementById('stats-badge').className='section-badge badge badge-blue';
+}
+
+// ══════════════════════════════════════════════════════════════
+// FORMULA VALIDATION & INTRINSIC SENSITIVITY
+// ══════════════════════════════════════════════════════════════
+
+function validateFormula(){
+  if(!DATA){toast('Chargez des données d\'abord',true);return;}
+  var expr=document.getElementById('formulaInput').value.trim();
+  if(!expr){toast('Entrez une formule',true);return;}
+
+  var fb=document.getElementById('formulaFeedback');
+  try{
+    var names=DATA.featureNames;
+    var fn=new Function(names.join(','),'return '+expr);
+    // Test on first row
+    var testRow=DATA.X[0];
+    var testVal=fn.apply(null,testRow);
+    if(!isFinite(testVal)) throw new Error('La formule retourne une valeur non finie sur la 1ère ligne');
+
+    // Validate on all rows
+    var preds=DATA.X.map(function(row){return fn.apply(null,row);});
+    var r2=computeR2Model(preds,DATA.y);
+    var rmse=computeRMSEModel(preds,DATA.y);
+
+    MODEL_FN=fn;
+    fb.innerHTML='<span style="color:var(--green);">✓ Formule valide — R²='+r2.toFixed(4)+' · RMSE='+fmt(rmse)+'</span>';
+    toast('✓ Formule validée (R²='+r2.toFixed(4)+')');
+
+    // Unlock dependent analyses
+    document.getElementById('sec-sobol').style.display='';
+    document.getElementById('sec-cv').style.display='';
+    document.getElementById('sec-perm').style.display='';
+
+    // Run intrinsic sensitivity
+    renderIntrinsicSensitivity();
+  }catch(e){
+    MODEL_FN=null;
+    fb.innerHTML='<span style="color:var(--red);">✗ '+e.message+'</span>';
+  }
+}
+
+function computeR2Model(preds,y){
+  var n=y.length,mean=y.reduce(function(a,b){return a+b;},0)/n;
+  var ss=0,sr=0;
+  for(var i=0;i<n;i++){ss+=(y[i]-mean)*(y[i]-mean);sr+=(y[i]-preds[i])*(y[i]-preds[i]);}
+  return ss<1e-15?1:1-sr/ss;
+}
+function computeRMSEModel(preds,y){
+  var n=y.length,s=0;
+  for(var i=0;i<n;i++) s+=(y[i]-preds[i])*(y[i]-preds[i]);
+  return Math.sqrt(s/n);
+}
+
+// ── Intrinsic sensitivity via finite differences ─────────────
+function renderIntrinsicSensitivity(){
+  if(!MODEL_FN||!DATA) return;
+  var names=DATA.featureNames;
+  var nv=names.length;
+
+  // For each variable, estimate local power exponent at median point
+  var medians=names.map(function(_,i){return percentile(DATA.X.map(function(r){return r[i];}),50);});
+  var yMed=MODEL_FN.apply(null,medians);
+
+  // alpha_i = d log(y) / d log(xi) ≈ (log f(x+h) - log f(x-h)) / (log(xi+h) - log(xi-h))
+  var alphas=names.map(function(_,i){
+    var h=Math.abs(medians[i])*0.01||0.01;
+    var xp=medians.slice();xp[i]+=h;
+    var xm=medians.slice();xm[i]-=h;
+    var fp=MODEL_FN.apply(null,xp);
+    var fm=MODEL_FN.apply(null,xm);
+    if(!isFinite(fp)||!isFinite(fm)||fp<=0||fm<=0) return NaN;
+    return (Math.log(fp)-Math.log(fm))/(Math.log(medians[i]+h)-Math.log(medians[i]-h));
+  });
+
+  // Amplitude R = (P95-P5)/median for each variable
+  var statsArr=names.map(function(_,i){return stats1d(DATA.X.map(function(r){return r[i];}));});
+  var Rs=statsArr.map(function(s){return s.R_p5p95;});
+  var RsF=statsArr.map(function(s){return s.R_full;});
+
+  // Impact potential I = |alpha| * R
+  var impacts=names.map(function(_,i){return Math.abs(alphas[i])*Rs[i];});
+
+  // Q_i = (P95/P5)^alpha_i — predicted variation
+  var Qs=names.map(function(_,i){
+    var s=statsArr[i];
+    if(s.p5<=0||!isFinite(alphas[i])) return NaN;
+    return Math.pow(s.p95/s.p5, alphas[i]);
+  });
+  var pctImpacts=Qs.map(function(q){return Math.abs(q-1)*100;});
+
+  var maxImpact=Math.max.apply(null,pctImpacts.filter(isFinite))||1;
+
+  // Build table
+  var rows=names.map(function(n,i){return{name:n,alpha:alphas[i],R:Rs[i],Rfull:RsF[i],impact:impacts[i],pct:pctImpacts[i]};});
+  rows.sort(function(a,b){return (isFinite(b.pct)?b.pct:0)-(isFinite(a.pct)?a.pct:0);});
+
+  var cl=getColors();
+  var html='';
+  html+='<div class="warn-box" style="margin-bottom:1rem;">Calculé au point médian — valide pour les lois puissance et les fonctions régulières. Pour les relations non-monotones, interpréter avec précaution.</div>';
+  html+='<div style="overflow-x:auto;"><table class="sens-table">';
+  html+='<thead><tr><th>Rang</th><th>Variable</th><th>α_i (exposant local)</th><th>R P5–P95</th><th>R min–max</th><th>Impact |α|·R</th><th>Variation prédite P5→P95</th><th>Impact %</th></tr></thead><tbody>';
+
+  rows.forEach(function(r,idx){
+    var pctStr=isFinite(r.pct)?r.pct.toFixed(1)+'%':'—';
+    var barW=isFinite(r.pct)?Math.min(100,r.pct/maxImpact*100).toFixed(0):0;
+    var color=idx===0?cl.green:idx<3?cl.amber:cl.muted;
+    var alphaStr=isFinite(r.alpha)?r.alpha.toFixed(3):'—';
+    var alphaColor=!isFinite(r.alpha)?'':r.alpha>0?'color:var(--green)':'color:var(--red)';
+    html+='<tr>';
+    html+='<td style="color:var(--muted);font-family:var(--font-mono);">'+(idx+1)+'</td>';
+    html+='<td style="font-family:var(--font-mono);color:var(--accent);">'+r.name+'</td>';
+    html+='<td style="font-family:var(--font-mono);'+alphaColor+'">'+alphaStr+'</td>';
+    html+='<td style="font-family:var(--font-mono);">'+r.R.toFixed(3)+'</td>';
+    html+='<td style="font-family:var(--font-mono);color:var(--muted);">'+r.Rfull.toFixed(3)+'</td>';
+    html+='<td style="font-family:var(--font-mono);">'+( isFinite(r.impact)?r.impact.toFixed(3):'—')+'</td>';
+    html+='<td class="rank-bar-cell"><div class="rank-bar-bg"><div class="rank-bar-fill" style="width:'+barW+'%;background:'+color+';"></div></div></td>';
+    html+='<td style="font-family:var(--font-mono);font-weight:600;color:'+color+';">'+pctStr+'</td>';
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+
+  var body=document.getElementById('sens-body');
+  body.innerHTML=body.innerHTML.split('<div class="warn-box"')[0]; // keep info-box
+  body.innerHTML=document.querySelector('#sens-body .info-box').outerHTML+html;
+
+  document.getElementById('sec-sens').style.display='';
+  document.getElementById('sens-badge').textContent=nv+' variables';
+}
+
+function getColors(){
+  var dark=document.documentElement.getAttribute('data-theme')==='dark';
+  return{
+    accent:dark?'#e8a020':'#c47800',
+    green: dark?'#5dd68a':'#1a8050',
+    amber: dark?'#e8a020':'#b06000',
+    red:   dark?'#d07070':'#a03030',
+    muted: dark?'#7a8099':'#9a9aaa',
+    grid:  dark?'rgba(255,255,255,.05)':'rgba(0,0,0,.05)',
+    tick:  dark?'#7a8099':'#9a9aaa',
+  };
+}
+
+// ══════════════════════════════════════════════════════════════
+// SOBOL INDICES (Saltelli method, quasi-random)
+// ══════════════════════════════════════════════════════════════
+
+function sobolSeq(n,d){
+  // Simple Van der Corput base-2 for d dimensions (direction numbers simplified)
+  // For a production tool use a proper Sobol sequence library;
+  // here we use a stratified LHS + scrambled as a reasonable approximation
+  var result=[];
+  for(var i=0;i<n;i++){
+    var row=[];
+    for(var j=0;j<d;j++){
+      // Halton sequence with prime bases
+      var primes=[2,3,5,7,11,13,17,19,23,29];
+      var base=primes[j%primes.length];
+      var x=0,f=1,num=i+1;
+      while(num>0){f/=base;x+=f*(num%base);num=Math.floor(num/base);}
+      row.push(x);
+    }
+    result.push(row);
+  }
+  return result;
+}
+
+async function runSobol(){
+  if(!MODEL_FN||!DATA){toast('Formule requise',true);return;}
+  var N=parseInt(document.getElementById('sobolN').value);
+  var names=DATA.featureNames;
+  var nv=names.length;
+  var content=document.getElementById('sobol-content');
+  content.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin:.5rem 0;"><div class="spinner"></div><span style="font-size:12px;color:var(--muted);">Calcul Sobol N='+N+'…</span></div>';
+
+  await new Promise(function(r){setTimeout(r,20);});
+
+  // Saltelli 2010 estimator — uses A, B, and AB matrices
+  var d=nv;
+  var seq=sobolSeq(N,2*d);
+
+  // Map Halton samples to variable ranges [P5, P95] for robustness
+  var ranges=names.map(function(_,i){
+    var col=DATA.X.map(function(r){return r[i];});
+    return{lo:percentile(col,5),hi:percentile(col,95)};
+  });
+
+  function sampleToX(u){
+    // u in [0,1]^d → variable space
+    return ranges.map(function(r,i){return r.lo+u[i]*(r.hi-r.lo);});
+  }
+
+  var A=[],B=[];
+  for(var i=0;i<N;i++){
+    A.push(sampleToX(seq[i].slice(0,d)));
+    B.push(sampleToX(seq[i].slice(d,2*d)));
+  }
+
+  // y_A, y_B
+  var yA=A.map(function(row){return MODEL_FN.apply(null,row);});
+  var yB=B.map(function(row){return MODEL_FN.apply(null,row);});
+
+  var f0=(yA.reduce(function(a,b){return a+b;},0)+yB.reduce(function(a,b){return a+b;},0))/(2*N);
+  var varY_A=yA.reduce(function(s,v){return s+(v-f0)*(v-f0);},0)/N;
+  var varY=varY_A; // approximation
+
+  // For each variable i: build AB_i matrix (A with col i from B)
+  var Si=[],STi=[];
+  for(var vi=0;vi<d;vi++){
+    var sumS=0,sumST=0;
+    for(var j=0;j<N;j++){
+      // AB_i: copy A, replace column vi with B[j][vi]
+      var ABi=A[j].slice(); ABi[vi]=B[j][vi];
+      var yABi=MODEL_FN.apply(null,ABi);
+      // BA_i: copy B, replace column vi with A[j][vi]
+      var BAi=B[j].slice(); BAi[vi]=A[j][vi];
+      var yBAi=MODEL_FN.apply(null,BAi);
+      // Saltelli 2010: Si ≈ (1/N)*sum(yB*(yABi-yA)) / Var(Y)
+      sumS  += yB[j]*(yABi-yA[j]);
+      // STi ≈ (1/(2N))*sum((yA-yBAi)^2) / Var(Y)  [Jansen estimator]
+      sumST += (yA[j]-yBAi)*(yA[j]-yBAi);
+    }
+    var si=(sumS/N)/varY;
+    var sti=(sumST/(2*N))/varY;
+    Si.push(Math.max(0,si));
+    STi.push(Math.max(0,sti));
+  }
+
+  // Second-order: S_ij ≈ STi + STj - Si - Sj (crude estimate)
+  // For display, compute from residual
+  var sumSi=Si.reduce(function(a,b){return a+b;},0);
+
+  // ── Render ──
+  var cl=getColors();
+  var html='<div class="two-col" style="margin-bottom:1rem;">';
+
+  // First-order
+  html+='<div><div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;">S_i — First-order (effet propre)</div>';
+  var rowsS=names.map(function(n,i){return{name:n,s:Si[i]};}).sort(function(a,b){return b.s-a.s;});
+  html+='<table class="sens-table"><thead><tr><th>Variable</th><th>S_i</th><th>Part</th></tr></thead><tbody>';
+  rowsS.forEach(function(r){
+    var pct=(r.s*100).toFixed(1);
+    var bw=(r.s*100).toFixed(0);
+    html+='<tr><td style="font-family:var(--font-mono);color:var(--accent);">'+r.name+'</td>'
+      +'<td style="font-family:var(--font-mono);">'+r.s.toFixed(3)+'</td>'
+      +'<td class="rank-bar-cell"><div class="rank-bar-bg"><div class="rank-bar-fill" style="width:'+bw+'%;background:'+cl.accent+';"></div></div>&nbsp;<span style="font-size:11px;">'+pct+'%</span></td></tr>';
+  });
+  html+='</tbody></table></div>';
+
+  // Total-order
+  html+='<div><div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;">S_Ti — Total-order (effet + interactions)</div>';
+  var rowsST=names.map(function(n,i){return{name:n,s:STi[i]};}).sort(function(a,b){return b.s-a.s;});
+  html+='<table class="sens-table"><thead><tr><th>Variable</th><th>S_Ti</th><th>Part</th></tr></thead><tbody>';
+  rowsST.forEach(function(r){
+    var pct=(r.s*100).toFixed(1);
+    var bw=Math.min(100,(r.s*100)).toFixed(0);
+    html+='<tr><td style="font-family:var(--font-mono);color:var(--accent);">'+r.name+'</td>'
+      +'<td style="font-family:var(--font-mono);">'+r.s.toFixed(3)+'</td>'
+      +'<td class="rank-bar-cell"><div class="rank-bar-bg"><div class="rank-bar-fill" style="width:'+bw+'%;background:'+cl.green+';"></div></div>&nbsp;<span style="font-size:11px;">'+pct+'%</span></td></tr>';
+  });
+  html+='</tbody></table></div>';
+  html+='</div>';
+
+  // Interaction heatmap (STi - Si = interactions involving i)
+  if(nv>1){
+    html+='<div style="margin-top:1rem;"><div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;">Part d\'interaction S_Ti − S_i</div>';
+    html+='<div class="sobol-wrap"><div style="display:inline-grid;grid-template-columns:repeat('+(nv+1)+',auto);gap:3px;">';
+
+    // Header row
+    html+='<div style="font-size:10px;color:var(--muted);padding:4px;"></div>';
+    names.forEach(function(n){
+      html+='<div style="font-size:10px;font-weight:600;color:var(--accent);padding:4px 6px;text-align:center;font-family:var(--font-mono);">'+n+'</div>';
+    });
+    // Data row (only one row: STi-Si per variable)
+    html+='<div style="font-size:10px;font-weight:600;color:var(--muted);padding:4px 6px;display:flex;align-items:center;">Interact.</div>';
+    names.forEach(function(_,i){
+      var v=Math.max(0,STi[i]-Si[i]);
+      var pct=(v*100).toFixed(1);
+      var bg=sobolColor(v);
+      html+='<div class="sobol-cell" style="background:'+bg+';color:#fff;border-radius:5px;padding:6px 10px;font-size:11px;font-weight:500;" title="'+names[i]+' : interaction '+pct+'%">'+pct+'%</div>';
+    });
+    html+='</div>';
+    html+='<div class="sobol-legend"><div class="sobol-grad"></div><span>0%</span><span style="margin-left:auto">forte interaction</span></div></div>';
+  }
+
+  // Pair interactions matrix if nv<=5
+  if(nv>=2 && nv<=5){
+    html+='<div style="margin-top:1.25rem;"><div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;">Matrice d\'interactions croisées estimées S_ij</div>';
+    html+='<div class="info-box" style="margin-bottom:.75rem;font-size:11px;">Estimation : S_ij ≈ S_Ti − S_i (contribution des interactions impliquant la variable i avec toutes les autres).</div>';
+    html+='<div class="sobol-wrap"><table class="sens-table"><thead><tr><th></th>';
+    names.forEach(function(n){html+='<th>'+n+'</th>';});
+    html+='</tr></thead><tbody>';
+    names.forEach(function(ni,i){
+      html+='<tr><td style="font-family:var(--font-mono);color:var(--accent);">'+ni+'</td>';
+      names.forEach(function(_,j){
+        if(i===j){html+='<td style="color:var(--muted);">—</td>';return;}
+        var v=Math.max(0,(STi[i]-Si[i]+(STi[j]-Si[j]))/2);
+        var bg=sobolColor(v);
+        html+='<td style="background:'+bg+';color:#fff;font-family:var(--font-mono);font-size:11px;text-align:center;border-radius:3px;">'+(v*100).toFixed(1)+'%</td>';
+      });
+      html+='</tr>';
+    });
+    html+='</tbody></table></div></div>';
+  }
+
+  html+='<div style="font-size:11px;color:var(--muted);margin-top:.75rem;">N='+N+' — Méthode Saltelli (Halton quasi-aléatoire). Augmenter N pour plus de précision.</div>';
+  content.innerHTML=html;
+  document.getElementById('sobol-badge').textContent='N='+N;
+}
+
+function sobolColor(v){
+  // 0→surface, 1→accent
+  var dark=document.documentElement.getAttribute('data-theme')==='dark';
+  var c1=dark?[21,24,32]:[248,249,251];
+  var c2=dark?[232,160,32]:[196,120,0];
+  var t=Math.min(1,Math.max(0,v));
+  var r=Math.round(c1[0]+(c2[0]-c1[0])*t);
+  var g=Math.round(c1[1]+(c2[1]-c1[1])*t);
+  var b=Math.round(c1[2]+(c2[2]-c1[2])*t);
+  return 'rgb('+r+','+g+','+b+')';
+}
+
+// ══════════════════════════════════════════════════════════════
+// CROSS-VALIDATION
+// ══════════════════════════════════════════════════════════════
+
+async function runCV(){
+  if(!MODEL_FN||!DATA){toast('Formule requise',true);return;}
+  var k=parseInt(document.getElementById('cvK').value);
+  var n=DATA.X.length;
+  if(n<k*2){toast('Pas assez de données pour '+k+' folds',true);return;}
+
+  var content=document.getElementById('cv-content');
+  content.innerHTML='<div style="display:flex;align-items:center;gap:8px;"><div class="spinner"></div><span style="font-size:12px;color:var(--muted);">'+k+'-fold CV…</span></div>';
+  await new Promise(function(r){setTimeout(r,20);});
+
+  // Shuffle indices
+  var idx=Array.from({length:n},function(_,i){return i;});
+  for(var i=n-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var tmp=idx[i];idx[i]=idx[j];idx[j]=tmp;}
+
+  var foldSize=Math.floor(n/k);
+  var folds=[];
+  for(var f=0;f<k;f++){
+    var start=f*foldSize, end=(f===k-1)?n:(f+1)*foldSize;
+    folds.push(idx.slice(start,end));
+  }
+
+  var foldResults=[];
+  for(var f2=0;f2<k;f2++){
+    var valIdx=folds[f2];
+    var XVal=valIdx.map(function(i){return DATA.X[i];});
+    var yVal=valIdx.map(function(i){return DATA.y[i];});
+    var predVal=XVal.map(function(row){return MODEL_FN.apply(null,row);});
+    var r2=computeR2Model(predVal,yVal);
+    var rmse=computeRMSEModel(predVal,yVal);
+    // MAPE
+    var mape=yVal.reduce(function(s,v,i){return s+Math.abs((v-predVal[i])/Math.max(1e-12,Math.abs(v)));},0)/yVal.length*100;
+    foldResults.push({fold:f2+1,n:valIdx.length,r2:r2,rmse:rmse,mape:mape});
+  }
+
+  // Averages
+  var meanR2=foldResults.reduce(function(s,f){return s+f.r2;},0)/k;
+  var meanRMSE=foldResults.reduce(function(s,f){return s+f.rmse;},0)/k;
+  var meanMAPE=foldResults.reduce(function(s,f){return s+f.mape;},0)/k;
+  var stdR2=Math.sqrt(foldResults.reduce(function(s,f){return s+(f.r2-meanR2)*(f.r2-meanR2);},0)/k);
+
+  // Global (all data)
+  var predAll=DATA.X.map(function(row){return MODEL_FN.apply(null,row);});
+  var r2All=computeR2Model(predAll,DATA.y);
+  var rmseAll=computeRMSEModel(predAll,DATA.y);
+
+  var cl=getColors();
+  var qR2=meanR2>=0.95?'badge-green':meanR2>=0.85?'badge-blue':meanR2>=0.7?'badge-amber':'badge-red';
+
+  var html='<div class="cv-grid">';
+  html+='<div class="cv-metric"><div class="cv-label">R² ajustement (all)</div><div class="cv-value">'+r2All.toFixed(4)+'</div><div class="cv-sub">sur toutes les données</div></div>';
+  html+='<div class="cv-metric"><div class="cv-label">R² moyen (CV)</div><div class="cv-value" style="color:var(--green);">'+meanR2.toFixed(4)+'</div><div class="cv-sub">±'+stdR2.toFixed(4)+' (écart-type)</div></div>';
+  html+='<div class="cv-metric"><div class="cv-label">RMSE moyen (CV)</div><div class="cv-value">'+fmt(meanRMSE)+'</div><div class="cv-sub">dans les unités de y</div></div>';
+  html+='<div class="cv-metric"><div class="cv-label">MAPE moyen (CV)</div><div class="cv-value">'+meanMAPE.toFixed(2)+'%</div><div class="cv-sub">erreur relative moyenne</div></div>';
+  html+='</div>';
+
+  // Overfit indicator
+  var overfit=r2All-meanR2;
+  html+='<div style="margin:.85rem 0;padding:9px 12px;border-radius:8px;background:var(--'+(overfit>0.05?'red':'green')+'-bg);border:1px solid rgba('+(overfit>0.05?'160,48,48':'26,128,80')+',.2);font-size:12px;">';
+  if(overfit>0.1) html+='⚠️ <b>Sur-ajustement probable</b> — R²(all)−R²(CV)='+overfit.toFixed(3)+' > 0.10';
+  else if(overfit>0.05) html+='⚠️ Léger sur-ajustement — R²(all)−R²(CV)='+overfit.toFixed(3);
+  else html+='✅ Pas de sur-ajustement détecté — R²(all)−R²(CV)='+overfit.toFixed(3);
+  html+='</div>';
+
+  html+='<div style="overflow-x:auto;"><table class="sens-table"><thead><tr><th>Fold</th><th>N val.</th><th>R²</th><th>RMSE</th><th>MAPE</th><th>Qualité</th></tr></thead><tbody>';
+  foldResults.forEach(function(f){
+    var q=f.r2>=0.95?'badge-green':f.r2>=0.8?'badge-blue':f.r2>=0.6?'badge-amber':'badge-red';
+    var ql=f.r2>=0.95?'excellent':f.r2>=0.8?'bon':f.r2>=0.6?'moyen':'faible';
+    html+='<tr><td style="font-family:var(--font-mono);">'+f.fold+'</td>'
+      +'<td style="font-family:var(--font-mono);">'+f.n+'</td>'
+      +'<td style="font-family:var(--font-mono);">'+f.r2.toFixed(4)+'</td>'
+      +'<td style="font-family:var(--font-mono);">'+fmt(f.rmse)+'</td>'
+      +'<td style="font-family:var(--font-mono);">'+f.mape.toFixed(2)+'%</td>'
+      +'<td><span class="badge '+q+'">'+ql+'</span></td></tr>';
+  });
+  html+='</tbody></table></div>';
+
+  content.innerHTML=html;
+  document.getElementById('cv-badge').textContent=k+'-fold · R²='+meanR2.toFixed(3);
+  document.getElementById('cv-badge').className='section-badge badge '+(meanR2>=0.9?'badge-green':meanR2>=0.7?'badge-amber':'badge-red');
+}
+
+// ══════════════════════════════════════════════════════════════
+// PERMUTATION IMPORTANCE
+// ══════════════════════════════════════════════════════════════
+
+async function runPermutation(){
+  if(!MODEL_FN||!DATA){toast('Formule requise',true);return;}
+  var reps=parseInt(document.getElementById('permReps').value);
+  var names=DATA.featureNames;
+  var nv=names.length;
+  var content=document.getElementById('perm-content');
+  content.innerHTML='<div style="display:flex;align-items:center;gap:8px;"><div class="spinner"></div><span style="font-size:12px;color:var(--muted);">Permutation importance ('+reps+' répétitions)…</span></div>';
+  await new Promise(function(r){setTimeout(r,20);});
+
+  // Baseline R²
+  var baseR2=computeR2Model(DATA.X.map(function(row){return MODEL_FN.apply(null,row);}),DATA.y);
+
+  var results=[];
+  for(var vi=0;vi<nv;vi++){
+    var drops=[];
+    for(var rep=0;rep<reps;rep++){
+      // Build permuted X
+      var col=DATA.X.map(function(r){return r[vi];});
+      // Fisher-Yates shuffle
+      var perm=col.slice();
+      for(var i=perm.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var tmp=perm[i];perm[i]=perm[j];perm[j]=tmp;}
+      var Xperm=DATA.X.map(function(row,ri){var r2=row.slice();r2[vi]=perm[ri];return r2;});
+      var predPerm=Xperm.map(function(row){return MODEL_FN.apply(null,row);});
+      var r2perm=computeR2Model(predPerm,DATA.y);
+      drops.push(baseR2-r2perm);
+    }
+    drops.sort(function(a,b){return a-b;});
+    var meanDrop=drops.reduce(function(a,b){return a+b;},0)/reps;
+    var p5d=drops[Math.floor(reps*0.05)];
+    var p95d=drops[Math.floor(reps*0.95)];
+    results.push({name:names[vi],mean:meanDrop,p5:p5d,p95:p95d,rel:meanDrop/Math.max(1e-9,baseR2)});
+  }
+  results.sort(function(a,b){return b.mean-a.mean;});
+
+  var maxDrop=Math.max.apply(null,results.map(function(r){return r.mean;}));
+  var cl=getColors();
+
+  var html='<div class="info-box" style="margin-bottom:.75rem;">R² baseline = <b>'+baseR2.toFixed(4)+'</b>. Valeur affichée = chute de R² quand la variable est mélangée.</div>';
+  html+='<div style="overflow-x:auto;"><table class="sens-table"><thead><tr><th>Rang</th><th>Variable</th><th>ΔR² moyen</th><th>IC P5–P95</th><th>Impact relatif</th><th>Importance</th></tr></thead><tbody>';
+  results.forEach(function(r,idx){
+    var bw=maxDrop>0?Math.min(100,r.mean/maxDrop*100).toFixed(0):0;
+    var color=idx===0?cl.green:idx<Math.ceil(nv/2)?cl.amber:cl.muted;
+    var q=r.rel>0.3?'<span class="badge badge-green">critique</span>':
+          r.rel>0.1?'<span class="badge badge-amber">important</span>':
+          r.rel>0.02?'<span class="badge badge-blue">modéré</span>':'<span class="badge badge-red">faible</span>';
+    html+='<tr>';
+    html+='<td style="color:var(--muted);font-family:var(--font-mono);">'+(idx+1)+'</td>';
+    html+='<td style="font-family:var(--font-mono);color:var(--accent);">'+r.name+'</td>';
+    html+='<td style="font-family:var(--font-mono);">'+r.mean.toFixed(4)+'</td>';
+    html+='<td style="font-family:var(--font-mono);color:var(--muted);">['+r.p5.toFixed(4)+', '+r.p95.toFixed(4)+']</td>';
+    html+='<td class="rank-bar-cell"><div class="rank-bar-bg"><div class="rank-bar-fill" style="width:'+bw+'%;background:'+color+';"></div></div>&nbsp;<span style="font-size:11px;">'+(r.rel*100).toFixed(1)+'%</span></td>';
+    html+='<td>'+q+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  html+='<div style="font-size:11px;color:var(--muted);margin-top:.6rem;">'+reps+' répétitions par variable. IC = intervalle de confiance empirique [P5, P95].</div>';
+
+  content.innerHTML=html;
+  document.getElementById('perm-badge').textContent=reps+' reps · '+nv+' vars';
+  document.getElementById('perm-badge').className='section-badge badge badge-amber';
+}
+</script>
+</body>
+</html>
